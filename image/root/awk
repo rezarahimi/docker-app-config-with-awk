@@ -1,0 +1,66 @@
+#!/bin/bash
+
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+echo "Env variables"
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+
+env | awk '{ FS = "=" } {print $1,"\t", $2 }'
+
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+echo "End of Env variables"
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+echo -e "\n\n"
+
+function envValue() {
+    local NAME=$1
+    local ORG_VAL=$2
+    local VAL=$(env | grep "^${1}=" | cut -d= -f2-)
+    if [ -z "$VAL" ]; then
+      echo "${NAME}=${ORG_VAL}"
+    else
+      echo "${NAME}=${VAL}"
+    fi
+}
+
+export -f envValue
+
+function processToReplaceEnvValues(){
+ local FILE_NAME=$1
+ local REMOVE_EMPTY_LINES=$2
+ if [ ! -z "$REMOVE_EMPTY_LINES" -a "${REMOVE_EMPTY_LINES^^}" == "TRUE" ]; then
+    awk '/^\s*$/ {next;} { FS = "=" } NF == 2 && /^[^;]/ && /^[^#]/  { system("bash -c '\''envValue "$1" "$2"'\''") } NF != 2  || /^[;]/ || /^[#]/ {print $0}' $FILE_NAME
+ else
+    awk '{ FS = "=" } NF == 2 && /^[^;]/ && /^[^#]/ { system("bash -c '\''envValue "$1" "$2"'\''") } NF != 2  || /^[;]/ || /^[#]/  {print $0}' $FILE_NAME
+ fi
+}
+
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+echo "Modified ini samples file /sample/application.ini"
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+
+processToReplaceEnvValues /samples/application.ini $REMOVE_EMPTY_LINES > /samples/application.ini.new
+
+cat /samples/application.ini.new
+
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+echo "Diff ini samples file /sample/application.ini"
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+
+diff /samples/application.ini /samples/application.ini.new
+
+echo -e "\n\n"
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+echo "Modified properties sample file /sample/myapp.properties"
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+
+processToReplaceEnvValues /samples/myapp.properties $REMOVE_EMPTY_LINES > /samples/myapp.properties.new
+
+cat /samples/myapp.properties.new
+
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+echo "Diff properties sample file /sample/myapp.properties"
+echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
+
+diff /samples/myapp.properties /samples/myapp.properties.new
+
+
