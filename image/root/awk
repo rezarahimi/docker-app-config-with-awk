@@ -1,5 +1,15 @@
 #!/bin/bash
 
+#set -x
+#export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+function shut_down() {
+  echo "Shutting down"
+  kill -TERM $pid 2>/dev/null
+}
+
+trap "shut_down" SIGKILL SIGTERM SIGHUP SIGINT EXIT
+
 echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
 echo "Env variables"
 echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
@@ -11,10 +21,11 @@ echo "End of Env variables"
 echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
 echo -e "\n\n"
 
-function envValue() {
+function envKeyValuePair() {
     local NAME=$1
+    local MODIFIED_NAME=$(echo $NAME | sed 's/_SPC____//g')
     local ORG_VAL=$2
-    local VAL=$(env | grep "^${1}=" | cut -d= -f2-)
+    local VAL=$(env | grep "^${MODIFIED_NAME}=" | cut -d= -f2-)
     if [ -z "$VAL" ]; then
       echo "${NAME}=${ORG_VAL}"
     else
@@ -22,16 +33,29 @@ function envValue() {
     fi
 }
 
-export -f envValue
+export -f envKeyValuePair
 
 function processToReplaceEnvValues(){
  local FILE_NAME=$1
  local REMOVE_EMPTY_LINES=$2
+ TMP_FILE1="/tmp/tmp.1.tmp"
+ TMP_FILE2="/tmp/tmp.2.tmp"
+ sed 's/"/_DBQ____/g' $FILE_NAME > $TMP_FILE1
+ sed -i "s/'/_SGQ____/g" $TMP_FILE1
+ sed -i 's/[[:space:]]/_SPC____/g' $TMP_FILE1
+ sed -i 's/!/_EXC____/g' $TMP_FILE1
  if [ ! -z "$REMOVE_EMPTY_LINES" -a "${REMOVE_EMPTY_LINES^^}" == "TRUE" ]; then
-    awk '/^\s*$/ {next;} { FS = "=" } NF == 2 && /^[^;]/ && /^[^#]/  { system("bash -c '\''envValue "$1" "$2"'\''") } NF != 2  || /^[;]/ || /^[#]/ {print $0}' $FILE_NAME
+    awk '/^\s*$/ {next;} { FS = "=" } NF == 2 && /^[^;]/ && /^[^#]/  { system("bash -c '\''envKeyValuePair \""$1"\" \""$2"\"'\''") } NF != 2  || /^[;]/ || /^[#]/ {print $0}' $TMP_FILE1 > $TMP_FILE2
  else
-    awk '{ FS = "=" } NF == 2 && /^[^;]/ && /^[^#]/ { system("bash -c '\''envValue "$1" "$2"'\''") } NF != 2  || /^[;]/ || /^[#]/  {print $0}' $FILE_NAME
+    awk '{ FS = "=" } NF == 2 && /^[^;]/ && /^[^#]/ { system("bash -c '\''envKeyValuePair \""$1"\" \""$2"\"'\''") } NF != 2  || /^[;]/ || /^[#]/  {print $0}' $TMP_FILE1 > $TMP_FILE2
  fi
+ rm -f $TMP_FILE1
+ sed -i 's/_DBQ____/"/g' $TMP_FILE2
+ sed -i "s/_SGQ____/'/g" $TMP_FILE2
+ sed -i 's/_SPC____/ /g' $TMP_FILE2
+ sed -i 's/_EXC____/!/g' $TMP_FILE2
+ cat $TMP_FILE2
+ rm -f $TMP_FILE2
 }
 
 echo "‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡‡"
